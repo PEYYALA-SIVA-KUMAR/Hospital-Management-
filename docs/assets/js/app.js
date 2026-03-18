@@ -1,22 +1,33 @@
 const qs = (sel, ctx = document) => ctx.querySelector(sel);
 const qsa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
+const API_BASE = 'http://localhost:8080';
+
+const apiFetch = async (path, options = {}) => {
+  const headers = options.headers || {};
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    credentials: 'include'
+  });
+
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) {
+    throw new Error(data.error || 'Request failed');
+  }
+  return data;
+};
+
 const flash = (msg, type = 'success') => {
   const box = qs('.flash');
   if (!box) return;
   box.textContent = msg;
   box.classList.add('alert');
   box.dataset.type = type;
-};
-
-const store = {
-  set(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
-  },
-  get(key, fallback) {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  }
 };
 
 const validators = {
@@ -27,19 +38,19 @@ const validators = {
 
 const registerForm = qs('#registerForm');
 if (registerForm) {
-  registerForm.addEventListener('submit', (e) => {
+  registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const data = {
-      name: qs('#fullName').value.trim(),
+      fullName: qs('#fullName').value.trim(),
       email: qs('#email').value.trim(),
       password: qs('#password').value.trim(),
       phone: qs('#phone').value.trim(),
-      age: qs('#age').value.trim(),
+      age: Number(qs('#age').value.trim()),
       gender: qs('#gender').value
     };
 
     const errors = [];
-    if (!data.name) errors.push('Full name is required.');
+    if (!data.fullName) errors.push('Full name is required.');
     if (!validators.email(data.email)) errors.push('Enter a valid email.');
     if (!validators.password(data.password)) errors.push('Password must be at least 6 characters.');
     if (!validators.phone(data.phone)) errors.push('Phone must be 10 digits.');
@@ -57,53 +68,66 @@ if (registerForm) {
       return;
     }
 
-    const users = store.get('hms_users', []);
-    users.push(data);
-    store.set('hms_users', users);
-    flash('Registration successful. You can login now.');
-    registerForm.reset();
+    try {
+      await apiFetch('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      flash('Registration successful. You can login now.');
+      registerForm.reset();
+    } catch (err) {
+      flash(err.message, 'error');
+    }
   });
 }
 
 const loginForm = qs('#loginForm');
 if (loginForm) {
-  loginForm.addEventListener('submit', (e) => {
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const role = qs('#loginRole') ? qs('#loginRole').value : 'patient';
-    const email = qs('#loginEmail').value.trim();
-    const password = qs('#loginPassword').value.trim();
-    if (role === 'admin') {
-      if (email === 'admin@medilane.com' && password === 'admin123') {
-        store.set('hms_admin_session', { email, role: 'admin' });
+    const payload = {
+      role,
+      email: qs('#loginEmail').value.trim(),
+      password: qs('#loginPassword').value.trim()
+    };
+
+    try {
+      const res = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (res.role === 'ADMIN') {
         window.location.href = '../pages/admin.html';
       } else {
-        flash('Invalid admin credentials.', 'error');
+        window.location.href = '../pages/dashboard.html';
       }
-      return;
-    }
-
-    const users = store.get('hms_users', []);
-    const match = users.find(u => u.email === email && u.password === password);
-    if (match) {
-      store.set('hms_session', { ...match, role: 'patient' });
-      window.location.href = '../pages/dashboard.html';
-    } else {
-      flash('Invalid credentials. Try again.', 'error');
+    } catch (err) {
+      flash(err.message, 'error');
     }
   });
 }
 
 const adminLoginForm = qs('#adminLoginForm');
 if (adminLoginForm) {
-  adminLoginForm.addEventListener('submit', (e) => {
+  adminLoginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = qs('#adminEmail').value.trim();
-    const password = qs('#adminPassword').value.trim();
-    if (email === 'admin@medilane.com' && password === 'admin123') {
-      store.set('hms_admin_session', { email, role: 'admin' });
-      window.location.href = '../pages/admin.html';
-    } else {
-      flash('Invalid admin credentials.', 'error');
+    const payload = {
+      role: 'admin',
+      email: qs('#adminEmail').value.trim(),
+      password: qs('#adminPassword').value.trim()
+    };
+
+    try {
+      const res = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (res.role === 'ADMIN') {
+        window.location.href = '../pages/admin.html';
+      }
+    } catch (err) {
+      flash(err.message, 'error');
     }
   });
 }
@@ -118,45 +142,52 @@ serviceButtons.forEach(btn => {
 
 const bookingForm = qs('#bookingForm');
 if (bookingForm) {
+  const doctorSelect = qs('#doctor');
   const params = new URLSearchParams(window.location.search);
   const service = params.get('service');
-  if (service) {
-    qs('#doctor').value = service;
-  }
-  const session = store.get('hms_session', null);
-  if (!session || session.role !== 'patient') {
-    window.location.href = '../pages/login.html';
-  } else {
-    if (qs('#patientName') && !qs('#patientName').value) {
-      qs('#patientName').value = session.name || '';
-    }
-    if (qs('#patientPhone') && !qs('#patientPhone').value) {
-      qs('#patientPhone').value = session.phone || '';
-    }
-  }
 
-  bookingForm.addEventListener('submit', (e) => {
+  const loadDoctors = async () => {
+    const doctors = await apiFetch('/api/doctors');
+    doctorSelect.innerHTML = '<option value="">Choose service</option>';
+    doctors.forEach(doc => {
+      const option = document.createElement('option');
+      option.value = doc.id;
+      option.textContent = `${doc.specialty} - ${doc.name}`;
+      option.dataset.specialty = doc.specialty;
+      doctorSelect.appendChild(option);
+    });
+
+    if (service) {
+      const match = Array.from(doctorSelect.options)
+        .find(opt => opt.dataset.specialty === service);
+      if (match) {
+        doctorSelect.value = match.value;
+      }
+    }
+  };
+
+  loadDoctors().catch(err => flash(err.message, 'error'));
+
+  apiFetch('/api/auth/me')
+    .then(me => {
+      if (me.fullName && qs('#patientName')) qs('#patientName').value = me.fullName;
+      if (me.phone && qs('#patientPhone')) qs('#patientPhone').value = me.phone;
+      if (me.age && qs('#patientAge')) qs('#patientAge').value = me.age;
+    })
+    .catch(() => {});
+
+  bookingForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const appointmentId = Date.now();
     const booking = {
-      id: appointmentId,
-      email: session ? session.email : '',
-      name: qs('#patientName').value.trim(),
-      age: qs('#patientAge').value.trim(),
-      phone: qs('#patientPhone').value.trim(),
-      doctor: qs('#doctor').value,
-      problem: qs('#problem').value.trim(),
-      date: qs('#date').value,
-      status: 'PENDING'
+      doctorId: Number(doctorSelect.value),
+      problemDescription: qs('#problem').value.trim(),
+      appointmentDate: qs('#date').value
     };
 
     const errors = [];
-    if (!booking.name) errors.push('Patient name required.');
-    if (!booking.age || Number(booking.age) < 1) errors.push('Valid age required.');
-    if (!validators.phone(booking.phone)) errors.push('Phone must be 10 digits.');
-    if (!booking.doctor) errors.push('Select doctor.');
-    if (!booking.problem) errors.push('Describe health problem.');
-    if (!booking.date) errors.push('Choose appointment date.');
+    if (!booking.doctorId) errors.push('Select doctor.');
+    if (!booking.problemDescription) errors.push('Describe health problem.');
+    if (!booking.appointmentDate) errors.push('Choose appointment date.');
 
     const errorBox = qs('#bookingErrors');
     errorBox.innerHTML = '';
@@ -169,53 +200,60 @@ if (bookingForm) {
       return;
     }
 
-    const appointments = store.get('hms_appointments', []);
-    appointments.push(booking);
-    store.set('hms_appointments', appointments);
-    store.set('hms_last_appointment', appointmentId);
-    window.location.href = '../pages/payment.html';
+    try {
+      const res = await apiFetch('/api/patient/appointments', {
+        method: 'POST',
+        body: JSON.stringify(booking)
+      });
+      sessionStorage.setItem('hms_last_appointment_id', String(res.id));
+      window.location.href = '../pages/payment.html';
+    } catch (err) {
+      flash(err.message, 'error');
+    }
   });
 }
 
 const paymentForm = qs('#paymentForm');
 if (paymentForm) {
-  paymentForm.addEventListener('submit', (e) => {
+  paymentForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const method = qs('input[name="paymentMethod"]:checked');
+    const amount = qs('#amount') ? qs('#amount').value.trim() : '';
     if (!method) {
       flash('Select a payment method to continue.', 'error');
       return;
     }
-    const lastId = store.get('hms_last_appointment', null);
-    if (lastId) {
-      const appointments = store.get('hms_appointments', []);
-      const idx = appointments.findIndex(a => a.id === lastId);
-      if (idx !== -1) {
-        appointments[idx].status = 'AWAITING_ADMIN';
-        store.set('hms_appointments', appointments);
-      }
+    if (!amount || Number(amount) <= 0) {
+      flash('Enter a valid amount.', 'error');
+      return;
     }
-    const payments = store.get('hms_payments', []);
-    payments.push({ method: method.value, date: new Date().toISOString() });
-    store.set('hms_payments', payments);
-    flash('Payment successful. Waiting for admin approval.');
-    paymentForm.reset();
+
+    const lastId = sessionStorage.getItem('hms_last_appointment_id');
+    if (!lastId) {
+      flash('No appointment found to pay for.', 'error');
+      return;
+    }
+
+    try {
+      await apiFetch('/api/patient/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          appointmentId: Number(lastId),
+          amount: Number(amount),
+          method: method.value
+        })
+      });
+      flash('Payment successful. Waiting for admin approval.');
+      paymentForm.reset();
+    } catch (err) {
+      flash(err.message, 'error');
+    }
   });
 }
 
 const adminAppointments = qs('#adminAppointments');
 if (adminAppointments) {
-  const doctorImages = {
-    'Full Body Checkup': '../assets/img/doctor-body.svg',
-    'General Physician': '../assets/img/doctor-general.svg',
-    'Heart Specialist': '../assets/img/doctor-heart.svg',
-    'Orthopedic Doctor': '../assets/img/doctor-ortho.svg',
-    'Skin Specialist': '../assets/img/doctor-skin.svg',
-    'Eye Specialist': '../assets/img/doctor-eye.svg'
-  };
-
-  const renderAdminAppointments = () => {
-    const appointments = store.get('hms_appointments', []);
+  const renderAdminAppointments = (appointments) => {
     const body = adminAppointments.querySelector('tbody');
     body.innerHTML = '';
     if (!appointments.length) {
@@ -227,15 +265,14 @@ if (adminAppointments) {
 
     appointments.forEach((a, idx) => {
       const row = document.createElement('tr');
-      const img = doctorImages[a.doctor] || '../assets/img/doctor-general.svg';
       row.innerHTML = `
         <td>${idx + 1}</td>
-        <td>${a.name}</td>
-        <td>${a.phone}</td>
-        <td>${a.doctor}</td>
-        <td>${a.problem}</td>
-        <td><img src="${img}" alt="${a.doctor}" style="width:48px;height:48px;border-radius:12px;"></td>
+        <td>${a.user?.fullName || '-'}</td>
+        <td>${a.user?.phone || '-'}</td>
+        <td>${a.doctor?.specialty || '-'}</td>
+        <td>${a.problemDescription || '-'}</td>
         <td><span class="badge">${a.status || 'PENDING'}</span></td>
+        <td>${a.appointmentDate || '-'}</td>
         <td>
           <button class="btn btn-outline" type="button" data-action="accept" data-id="${a.id}">Accept</button>
           <button class="btn btn-outline" type="button" data-action="reject" data-id="${a.id}">Reject</button>
@@ -246,46 +283,52 @@ if (adminAppointments) {
     });
   };
 
-  adminAppointments.addEventListener('click', (e) => {
+  const loadAdminAppointments = async () => {
+    const appointments = await apiFetch('/api/admin/appointments');
+    renderAdminAppointments(appointments);
+  };
+
+  adminAppointments.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
     const id = Number(btn.dataset.id);
-    const appointments = store.get('hms_appointments', []);
-    const idx = appointments.findIndex(a => a.id === id);
-    if (idx === -1) return;
-    if (action === 'delete') {
-      appointments.splice(idx, 1);
-      const lastId = store.get('hms_last_appointment', null);
-      if (lastId === id) {
-        store.set('hms_last_appointment', null);
+    try {
+      if (action === 'delete') {
+        await apiFetch(`/api/admin/appointments/${id}`, { method: 'DELETE' });
+      } else {
+        const status = action === 'accept' ? 'CONFIRMED' : 'REJECTED';
+        await apiFetch(`/api/admin/appointments/${id}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status })
+        });
       }
-      store.set('hms_appointments', appointments);
-    } else {
-      appointments[idx].status = action === 'accept' ? 'CONFIRMED' : 'REJECTED';
-      store.set('hms_appointments', appointments);
+      await loadAdminAppointments();
+    } catch (err) {
+      flash(err.message, 'error');
     }
-    renderAdminAppointments();
   });
 
-  renderAdminAppointments();
+  loadAdminAppointments().catch(err => flash(err.message, 'error'));
 }
 
 const adminPatients = qs('#adminPatients');
 if (adminPatients) {
-  const users = store.get('hms_users', []);
-  const body = adminPatients.querySelector('tbody');
-  body.innerHTML = '';
-  if (!users.length) {
-    const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="6">No patients registered yet.</td>';
-    body.appendChild(row);
-  } else {
+  const loadPatients = async () => {
+    const users = await apiFetch('/api/admin/patients');
+    const body = adminPatients.querySelector('tbody');
+    body.innerHTML = '';
+    if (!users.length) {
+      const row = document.createElement('tr');
+      row.innerHTML = '<td colspan="6">No patients registered yet.</td>';
+      body.appendChild(row);
+      return;
+    }
     users.forEach((u, idx) => {
       const row = document.createElement('tr');
       row.innerHTML = `
         <td>${idx + 1}</td>
-        <td>${u.name}</td>
+        <td>${u.fullName}</td>
         <td>${u.email}</td>
         <td>${u.phone}</td>
         <td>${u.age}</td>
@@ -293,52 +336,56 @@ if (adminPatients) {
       `;
       body.appendChild(row);
     });
-  }
+  };
+
+  loadPatients().catch(err => flash(err.message, 'error'));
 }
 
 const patientAppointments = qs('#patientAppointments');
 if (patientAppointments) {
-  const session = store.get('hms_session', null);
-  const appointments = store.get('hms_appointments', []);
-  const body = patientAppointments.querySelector('tbody');
-  body.innerHTML = '';
-  const mine = session ? appointments.filter(a => a.email === session.email) : [];
-  if (!mine.length) {
-    const row = document.createElement('tr');
-    row.innerHTML = '<td colspan="4">No appointments yet. Book one to see status.</td>';
-    body.appendChild(row);
-  } else {
-    mine
-      .slice()
-      .reverse()
-      .forEach((a, idx) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${idx + 1}</td>
-          <td>${a.doctor}</td>
-          <td>${a.date}</td>
-          <td><span class="badge">${a.status || 'PENDING'}</span></td>
-        `;
-        body.appendChild(row);
-      });
-  }
+  const loadMyAppointments = async () => {
+    const appointments = await apiFetch('/api/patient/appointments');
+    const body = patientAppointments.querySelector('tbody');
+    body.innerHTML = '';
+    if (!appointments.length) {
+      const row = document.createElement('tr');
+      row.innerHTML = '<td colspan="4">No appointments yet. Book one to see status.</td>';
+      body.appendChild(row);
+      return;
+    }
+    appointments.forEach((a, idx) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${idx + 1}</td>
+        <td>${a.doctor?.specialty || '-'}</td>
+        <td>${a.appointmentDate || '-'}</td>
+        <td><span class="badge">${a.status || 'PENDING'}</span></td>
+      `;
+      body.appendChild(row);
+    });
+  };
+
+  loadMyAppointments().catch(err => flash(err.message, 'error'));
 }
 
-// Simple role-based access (frontend demo)
-const roleGuards = () => {
+const roleGuards = async () => {
   const page = document.body.dataset.page;
   if (!page) return;
 
-  if (page === 'dashboard') {
-    const session = store.get('hms_session', null);
-    if (!session || session.role !== 'patient') {
-      window.location.href = '../pages/login.html';
+  try {
+    const me = await apiFetch('/api/auth/me');
+    if (page === 'dashboard' || page === 'booking' || page === 'payment') {
+      if (me.role !== 'PATIENT') {
+        window.location.href = '../pages/login.html';
+      }
     }
-  }
-
-  if (page === 'admin') {
-    const adminSession = store.get('hms_admin_session', null);
-    if (!adminSession || adminSession.role !== 'admin') {
+    if (page === 'admin') {
+      if (me.role !== 'ADMIN') {
+        window.location.href = '../pages/login.html';
+      }
+    }
+  } catch {
+    if (page !== 'login' && page !== 'register') {
       window.location.href = '../pages/login.html';
     }
   }
@@ -348,10 +395,12 @@ roleGuards();
 
 const logoutButtons = qsa('[data-logout]');
 logoutButtons.forEach(btn => {
-  btn.addEventListener('click', (e) => {
+  btn.addEventListener('click', async (e) => {
     e.preventDefault();
-    localStorage.removeItem('hms_session');
-    localStorage.removeItem('hms_admin_session');
-    window.location.href = '../pages/login.html';
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '../pages/login.html';
+    }
   });
 });

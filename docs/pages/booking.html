@@ -6,7 +6,7 @@
   <title>Book Appointment | Medilane Hospital</title>
   <link rel="stylesheet" href="../assets/css/styles.css" />
 </head>
-<body>
+<body data-page="booking">
   <header class="navbar">
     <div class="container nav-inner">
       <div class="brand">
@@ -17,7 +17,7 @@
         <a href="../index.html">Home</a>
         <a href="dashboard.html">Dashboard</a>
         <a class="active" href="booking.html">Book</a>
-        <a href="admin.html">Admin</a>
+        <a href="#" data-logout>Logout</a>
       </nav>
     </div>
   </header>
@@ -47,12 +47,6 @@
           <label for="doctor">Select Doctor</label>
           <select id="doctor" required>
             <option value="">Choose service</option>
-            <option>Full Body Checkup</option>
-            <option>General Physician</option>
-            <option>Heart Specialist</option>
-            <option>Orthopedic Doctor</option>
-            <option>Skin Specialist</option>
-            <option>Eye Specialist</option>
           </select>
         </div>
         <div class="form-row">

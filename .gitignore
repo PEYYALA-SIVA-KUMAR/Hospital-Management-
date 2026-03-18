@@ -1,0 +1,9 @@
+# Maven
+/backend/target/
+
+# IDE
+/.idea/
+/backend/.idea/
+
+# Logs
+*.log
