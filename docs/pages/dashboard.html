@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard | Medilane Hospital</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="brand-badge">M</div>
+        Medilane Hospital
+      </div>
+      <nav class="nav-links">
+        <!-- <a href="../index.html">Home</a> -->
+        <!-- <a href="login.html">Login</a>
+        <a href="register.html">Register</a> -->
+        <a class="active" href="dashboard.html">Dashboard</a>
+    <a href="admin.html">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container section">
+    <div class="dashboard-header">
+      <div>
+        <div class="badge">Patient Dashboard</div>
+        <h1 class="section-title">Choose a health service</h1>
+        <p class="section-sub">Book appointments with top specialists in minutes.</p>
+      </div>
+      <a class="btn btn-primary" href="booking.html">Book Appointment</a>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <img src="../assets/img/doctor-body.svg" alt="Full Body Checkup" />
+        <h3>Full Body Checkup</h3>
+        <p>Comprehensive screening package for preventive care.</p>
+        <button class="btn btn-outline" data-service="Full Body Checkup">Book Appointment</button>
+      </div>
+      <div class="card">
+        <img src="../assets/img/doctor-general.svg" alt="General Physician" />
+        <h3>General Physician</h3>
+        <p>Consultations for everyday health concerns.</p>
+        <button class="btn btn-outline" data-service="General Physician">Book Appointment</button>
+      </div>
+      <div class="card">
+        <img src="../assets/img/doctor-heart.svg" alt="Heart Specialist" />
+        <h3>Heart Specialist</h3>
+        <p>Cardiac diagnostics and treatment plans.</p>
+        <button class="btn btn-outline" data-service="Heart Specialist">Book Appointment</button>
+      </div>
+      <div class="card">
+        <img src="../assets/img/doctor-ortho.svg" alt="Orthopedic Doctor" />
+        <h3>Orthopedic Doctor</h3>
+        <p>Bone, joint, and sports injury care.</p>
+        <button class="btn btn-outline" data-service="Orthopedic Doctor">Book Appointment</button>
+      </div>
+      <div class="card">
+        <img src="../assets/img/doctor-skin.svg" alt="Skin Specialist" />
+        <h3>Skin Specialist</h3>
+        <p>Dermatology consultations for skin health.</p>
+        <button class="btn btn-outline" data-service="Skin Specialist">Book Appointment</button>
+      </div>
+      <div class="card">
+        <img src="../assets/img/doctor-eye.svg" alt="Eye Specialist" />
+        <h3>Eye Specialist</h3>
+        <p>Vision checks and eye treatment services.</p>
+        <button class="btn btn-outline" data-service="Eye Specialist">Book Appointment</button>
+      </div>
+    </div>
+
+    <section class="section">
+      <h2 class="section-title">My Appointment Status</h2>
+      <p class="section-sub">Track your latest booking and admin approval status.</p>
+      <table id="patientAppointments" class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Doctor</th>
+            <th>Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="footer">Stay healthy with Medilane Hospital.</footer>
+  <script src="../assets/js/app.js"></script>
+</body>
+</html>
