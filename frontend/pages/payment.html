@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment | Medilane Hospital</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="container nav-inner">
+      <div class="brand">
+        <div class="brand-badge">M</div>
+        Medilane Hospital
+      </div>
+      <nav class="nav-links">
+        <a href="../index.html">Home</a>
+        <a href="booking.html">Booking</a>
+        <a class="active" href="payment.html">Payment</a>
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container section">
+    <div class="form-wrap">
+      <div class="badge">Secure Payment</div>
+      <h1 class="form-title">Choose payment method</h1>
+      <p class="helper">All transactions are encrypted and hospital-approved.</p>
+
+      <div class="flash" style="margin: 12px 0;"></div>
+
+      <form id="paymentForm">
+        <div class="form-row">
+          <label>
+            <input type="radio" name="paymentMethod" value="UPI" /> UPI
+          </label>
+        </div>
+        <div class="form-row">
+          <label>
+            <input type="radio" name="paymentMethod" value="Credit Card" /> Credit Card
+          </label>
+        </div>
+        <div class="form-row">
+          <label>
+            <input type="radio" name="paymentMethod" value="Debit Card" /> Debit Card
+          </label>
+        </div>
+        <button class="btn btn-primary" type="submit">Confirm Payment</button>
+      </form>
+    </div>
+  </main>
+
+  <footer class="footer">Payment confirmation will be sent to your email.</footer>
+  <script src="../assets/js/app.js"></script>
+</body>
+</html>
