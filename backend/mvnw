@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Maven Wrapper script
+# https://maven.apache.org/wrapper/
+
+MAVEN_WRAPPER_DIR="$(cd "$(dirname "$0")" && pwd)/.mvn/wrapper"
+JAVA_EXEC="${JAVA_HOME:+$JAVA_HOME/bin/}java"
+
+if [ ! -f "$MAVEN_WRAPPER_DIR/maven-wrapper.jar" ]; then
+  echo "Wrapper jar not found."
+  exit 1
+fi
+
+exec "$JAVA_EXEC" -classpath "$MAVEN_WRAPPER_DIR/maven-wrapper.jar" \
+  -Dmaven.multiModuleProjectDirectory="$(cd "$(dirname "$0")" && pwd)" \
+  org.apache.maven.wrapper.MavenWrapperMain "$@"

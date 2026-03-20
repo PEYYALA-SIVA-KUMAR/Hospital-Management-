@@ -21,7 +21,8 @@ public class Appointment {
   @JoinColumn(name = "DOCTOR_ID")
   private Doctor doctor;
 
-  @Column(name = "PROBLEM_DESCRIPTION")
+  @Lob
+  @Column(name = "PROBLEM_DESCRIPTION", columnDefinition = "CLOB")
   private String problemDescription;
 
   @Column(name = "APPOINTMENT_DATE", nullable = false)

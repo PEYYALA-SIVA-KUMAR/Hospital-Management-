@@ -1,7 +1,9 @@
 const qs = (sel, ctx = document) => ctx.querySelector(sel);
 const qsa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8080`;
+const API_BASE = window.location.protocol === 'file:'
+  ? 'http://127.0.0.1:8081'
+  : `${window.location.protocol}//${window.location.hostname}:8081`;
 
 const apiFetch = async (path, options = {}) => {
   const headers = options.headers || {};

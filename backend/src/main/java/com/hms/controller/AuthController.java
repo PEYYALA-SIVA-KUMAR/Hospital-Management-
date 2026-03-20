@@ -75,6 +75,9 @@ public class AuthController {
       response.put("gender", user.getGender());
       return ResponseEntity.ok(response);
     }
-    return ResponseEntity.ok(Map.of("role", role, "userId", userId));
+    Map<String, Object> response = new HashMap<>();
+    response.put("role", role);
+    response.put("userId", userId);
+    return ResponseEntity.ok(response);
   }
 }
